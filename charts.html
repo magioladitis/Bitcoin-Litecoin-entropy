@@ -1,173 +1,337 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-
 <head>
+<meta charset="utf-8">
+<title>Bar Chart</title>
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Open+Sans:400,700|Raleway:400,700">
+<style>
+  body{
+    background-color: white;
+    font-family: 'Raleway',   'Open Sans',  sans-serif;
+  }
 
-    <meta charset="utf-8">
-    <title>Κατανάλωση πετρελαιοειδών 2016</title>
-    <meta property="og:image" content="http://isthisjam.com.s3.amazonaws.com/img/bubble-img.png" />
-    <!-- 180x110 Image for Linkedin -->
-    <meta property="og:image:width" content="180" />
-    <meta property="og:image:height" content="110" />
-    <meta property="og:image" content="http://isthisjam.com.s3.amazonaws.com/img/bubble-img.png" />
-    <!-- 200x200 Image for Facebook -->
-    <meta property="og:image:width" content="200" />
-    <meta property="og:image:height" content="200" />
-    <link rel="stylesheet" href="fuelstyle.css">
-    <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Open+Sans:400,700|Raleway:400,700">
-    
-    <!-- import from responcivevoice.org for non-commercial use -->
-    <script src='https://code.responsivevoice.org/responsivevoice.js'></script>
+  h1, h2{
+    text-align: center;
+  }
 
-    <script type="text/javascript">
-    var _gaq = _gaq || [];
-    _gaq.push(['_setAccount', 'UA-44807543-1']);
-    _gaq.push(['_trackPageview']);
-    var beep = new Audio("beep-07");
-    (function() {
-        var ga = document.createElement('script');
-        ga.type = 'text/javascript';
-        ga.async = true;
-        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-        var s = document.getElementsByTagName('script')[0];
-        s.parentNode.insertBefore(ga, s);
-    })();
-    </script>
+  .svgContainer{
+    text-align: center;
+  }
+
+  .axis text {
+    font: 10px sans-serif;
+  }
+
+  .chart text {
+    fill: black;
+    font: 10px sans-serif;
+    text-anchor: end;
+  }
+
+  .axis path,
+  .axis line {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+  }
+
+  a[role=button]{
+    font: 12px sans-serif;
+    display: inline-block;
+    background-color: white;
+    color: black;
+    margin: 0 5px;
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid grey;
+  }
+
+  a[role=button]:hover{
+    cursor: pointer;
+    background-color: #e5e5e5;
+    color: black;
+  }
+
+  header, nav {
+    text-align: center;
+    min-width: 767px;
+  }
+  
+  li {
+       display: inline;
+  }
+
+  #textForGrouppedByEntity, #textForGrouppedByParty{
+    text-align: center;
+  }
+</style>
 </head>
-<!-- Add feature detection and noscript -->
-
 <body>
+  
+ <header role="banner" id="title">
+   <h1>Who's funding the big three?</h1>
+ </header>
+<nav role="navigation">
+  <ul>
+    <li><a href"#" role="button" onclick="displayByParty()" class="pure-button switch" id="groupedByParty">Party Funding</a></li>
+    <li><a href"#" role="button" onclick="displayByEntity()" class="pure-button switch" id="groupedByEntity">Entities Contribution</a></li>
+  </ul>
+</nav>
+ 
+<div id="annotations">  
+  <div id="textForGrouppedByParty">
+    <h2>Income for each party.</h2>
+    <p>
+      Labour party was funded mainly by Trade Unions and Public Funds,
+      while Conservatives mostly by Individuals and Companies.
+    </p>
+  </div>
+  <div id="textForGrouppedByEntity">
+    <h2>Contribution by entity type.</h2>
+    <p>
+      Individuals contributed the most to the funding of the Big Three, most of them supporting the Conservative Party.
+      Trade Unions come second and, as expected, funded only the Labour Party. Public Funds and Companies come to the
+      third and fourth place respectively.
+    </p>
+  </div>
+</div>
+<div class="svgContainer">
+  <svg class="chart"></svg>
+</div>
+<script src="https://d3js.org/d3.v3.min.js"></script>
 
-    <header role="banner" id="title">
-        <h1>Κατανάλωση πετρελαιοειδών 2016</h1>
-    </header>
-    <nav role="navigation">
-        <ul>
-            <li><a href="#" role="button" class="pure-button switch" id="all-consumptions">Συνολική εικόνα</a>
-            </li>
-            <li><a href="#" role="button" class="pure-button switch" id="group-by-region">Κατά περιφερειακή ενότητα</a>
-            </li>
-            <li><a href="#" role="button" class="pure-button switch" id="group-by-fuelType">Κατά τύπο καυσίμου</a>
-            </li>
-        </ul>
-    </nav>
+<script>
 
-    <div id="annotations">
+// Script modified from https://bost.ocks.org/mike/bar/
 
-        <!-- Initial annotations -->
-        <div id="initial-content">
-            <h2>Κατανάλωση πετρελαιοειδών, κατά περιφεριακή ενότητα, περιφέρεια και κατηγορία για το έτος 2016</h2>
+var margin = {top: 20, right: 70, bottom: 30, left: 70},
+    width = 800 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
 
+var availableColors = ['red', 'blue', 'orange', 'green', 'purple', 'magenta'];
 
-            <p>Τα στοιχεία της έρευνας Κατανάλωσης Πετρελαιοειδών ταξινομούνται ως εξής:</p>
-            <ol>
-                <li>Γεωγραφική ταξινόμηση κατά Περιφέρεια και Περιφερειακή Ενότητα
-                    της Χώρας</li>
-                <li>Ταξινόμηση κατά κατηγορία πετρελαιοειδών για τις ακόλουθες
-                κατηγορίες:<br>
-                Βενζίνη σούπερ, βενζίνη αμόλυβδη, βενζίνη αμόλυβδη σούπερ,
-                πετρέλαιο θέρμανσης, πετρέλαιο κίνησης, μαζούτ χαμηλού θείου,
-                μαζούτ υψηλού θείου και υγραέριο.</li>
-            </ol>
+var x = d3.scale.ordinal()
+    .rangeRoundBands([0, width], .1);
 
-            <p>Πηγή: <a href="http://www.statistics.gr/el/statistics/-/publication/SDE15/-">Ελληνική Στατιστική Αρχή</a>
-            </p>
-        </div>
-        <div id="value-scale">
-            <div id="f">
-                <p>Κατανάλωση (μετρικοί τόννοι) &#8212;</p>
-            </div>
-            <div id="a">
-                <strong>10.000 t &#8212;</strong>
-            </div>
-            <div id="b">
-                <strong>50.000 t &#8212;</strong>
-            </div>
-            <div id="c">
-                <strong>100.000 t &#8212;</strong>
-            </div>
-            <div id="d">
-                <strong>500.000 t &#8212;</strong>
-            </div>
-        </div>
-        <!-- End initial-->
+var y = d3.scale.linear()
+    .range([height, 0]);
 
-        <!-- Region consumption annotations -->
-        <div id="view-source-type">
-            <div id="by-region" class="public-private">
-                <h3>Κατανάλωση κατά περιφεριακή ενότητα</h3>
-                <p>Κατά το έτος 2016, οι περιφέρειες που παρουσιάζουν τη μεγαλύτερη
-                κατανάλωση είναι η Αττική και η Κεντρική Μακεδονία και ακολουθούν οι περιφέρειες της Θεσσαλίας,
-                Στερεάς Ελλάδας, Δυτικής Ελλάδας, Πελοποννήσου, Ανατολικής Μακεδονίας και Θράκης, Κρήτης,
-                Ηπείρου, Δυτικής Μακεδονίας και Νοτίου Αιγαίου. Η χαμηλότερη κατανάλωση παρατηρείται στις
-                περιφέρειες του Βορείου Αιγαίου και των Ιονίων Νήσων.</p>
-            </div>
-            <div id="by-region-split" class="public-private">
-                <div id="region-north-greece">
-                    <h5>Βόρεια Ελλάς</h5>
-                    <strong>Σύνολο 2.474.406 t
-                    </strong>
-                    <p>Ποσοστό επί του συνόλου:
-                        <strong>35%</strong>
-                    </p>
-                </div>
-                <div id="region-central-greece">
-                    <h5>Κεντρική Ελλάς</h5>
-                    <strong>Σύνολο 3.926.855 t
-                    </strong>
-                    <p>Ποσοστό επί του συνόλου:
-                        <strong>55%</strong>
-                    </p>
-                </div>
-                <div id="region-south-greece">
-                    <h5>Νήσοι Αιγαίου και Κρήτη</h5>
-                    <strong>Σύνολο 698.931 t
-                    </strong>
-                    <p>Ποσοστό επί του συνόλου:
-                        <strong>10%</strong>
-                    </p>
-                </div>
-          </div>
-        </div>
-        <!-- End region consumption -->
+var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom");
 
-        <div id="view-fuelType-type">
-            <h3>Κατανάλωση ανά τύπο καυσίμου.</h3>
-            <div id="gasoline">
-                <h4>Βενζίνη: 2.420.330 t</h4>
-                <p>Ποσοστό:
-                    <strong>34%</strong>
-                </p>
-            </div>
-            <div id="diesel">
-                <h4>Πετρέλαιο: 3.821.980 t</h4>
-                <p>Ποσοστό:
-                    <strong>54%</strong>
-                </p>
-            </div>
-            <div id="mazut">
-                <h4>Μαζούτ: 355.366 t</h4>
-                <p>Ποσοστό:
-                    <strong>5%</strong>
-                </p>
-            </div>
-            <div id="lpg">
-                <h4>Υγραέριο: 502.715 t</h4>
-                <p>Ποσοστό:
-                    <strong>7%</strong>
-                </p>
-            </div>
-        </div>
-    </div>
-    <div id="chart"></div>
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left");
+
+var chart = d3.select(".chart")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+var groupedByEntity = [];
+var groupedByParty = [];
+
+var entityColors = {};
+var partyColors = {};
+
+d3.csv("data/7500up.csv", function(d) {d.amount = +d.amount; return d;}, function(error, data) {
+
+    data.forEach(function (record) {
+
+        // Section: Group By Entity
+        if (Object.keys(partyColors).indexOf(record.party) < 0) partyColors[record.party] =
+            availableColors[Object.keys(partyColors).length % availableColors.length];
+        var anEntity = groupedByEntity.find(function (item) {
+            return item.group === record.entityname
+        });
+        if (anEntity){
+            var party = anEntity.subgroups.find(function (p) {return p.name === record.partyname})
+            if(party){
+                party.amount += record.amount;
+            }
+            else
+                anEntity.subgroups.push({
+                    name: record.partyname,
+                    color: partyColors[record.party],
+                    amount: record.amount
+                });
+        }
+        else {
+            var newEntity = {
+                group: record.entityname,
+                subgroups: [{
+                    name: record.partyname,
+                    color: partyColors[record.party],
+                    amount: record.amount
+                }]
+            };
+            groupedByEntity.push(newEntity);
+        }
+        groupedByEntity = groupedByEntity.sort(function (a, b) {
+            var sumA = 0, sumB = 0;
+            a.subgroups.forEach(function (value) { sumA += value.amount });
+            b.subgroups.forEach(function (value) { sumB += value.amount });
+            return sumB - sumA;
+        })
 
 
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-    <script>
-    window.jQuery || document.write('<script src="js/vendor/jquery-1.10.2.min.js"><\/script>')
-    </script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.2.2/d3.v3.min.js" charset="utf-8"></script>
-    <script src="chart.js"></script>
+
+        // Section: Group By Party
+        if (Object.keys(entityColors).indexOf(record.entity) < 0) entityColors[record.entity] =
+            availableColors[Object.keys(entityColors).length % availableColors.length];
+        var party = groupedByParty.find(function (item) {
+            return item.group === record.partyname
+        });
+        if (party){
+            var entity = party.subgroups.find(function (ent) {return ent.name === record.entityname})
+            if(entity){
+                entity.amount += record.amount;
+            }
+            else
+                party.subgroups.push({
+                    name: record.entityname,
+                    color: entityColors[record.entity],
+                    amount: record.amount
+                });
+        }
+        else {
+            var newParty = {
+                group: record.partyname,
+                subgroups: [{
+                    name: record.entityname,
+                    color: entityColors[record.entity],
+                    amount: record.amount
+                }]
+            };
+            groupedByParty.push(newParty);
+        }
+
+    });
+
+    displayByParty();
+
+});
+
+function displayByParty() {
+    display(groupedByParty);
+    d3.select("#textForGrouppedByParty").style({"display": "block"});
+    d3.select("#textForGrouppedByEntity").style({"display": "none"});
+}
+
+function displayByEntity() {
+    display(groupedByEntity);
+    d3.select("#textForGrouppedByParty").style({"display": "none"});
+    d3.select("#textForGrouppedByEntity").style({"display": "block"});
+}
+
+function display(data) {
+
+    // Clear svg from any previous drawings
+    chart.selectAll("*").remove();
+
+
+    // Define domain
+    x.domain(data.map(function(d) { return d.group; }));
+    y.domain([0, d3.max(data, function (d) {
+        return d.subgroups.reduce(function(a, v) {return a + v.amount}, 0);
+    })]);
+
+    // Draw axises
+    chart.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis);
+
+    chart.append("g")
+        .attr("class", "y axis")
+        .call(yAxis);
+
+    // Define bars
+    var bar = chart.selectAll(".bar")
+        .data(data)
+        .enter();
+
+
+    var maxSubGroups = 0;
+    data.forEach(function (value) {
+        maxSubGroups = Math.max(maxSubGroups, value.subgroups.length);
+    });
+
+    // Draw stacked rectangles on each bar
+    for (var i = 0; i < maxSubGroups; i++){
+          bar.append("rect")
+              .attr("x", function(d) { return x(d.group); })
+              .attr("y", function(d) {
+                  if (d.subgroups.length > i){
+                      var partSumAmount = 0;
+                      for (var j = i; j >= 0; j--)
+                          partSumAmount += d.subgroups[j].amount;
+                      return y(partSumAmount);
+                  }
+                  else return 0;
+              })
+              .attr("height", function(d) {
+                  if (d.subgroups.length > i){
+                      return height - y(d.subgroups[i].amount);
+                  }
+                  else return 0;
+              })
+              .attr("fill", function(d) {
+                  if (d.subgroups.length > i){
+                      return d.subgroups[i].color;
+                  }
+                  else return;
+              })
+              .attr("width", x.rangeBand());
+    }
+
+    var subGroupLegendData = [];
+    data.forEach(function(d){
+        d.subgroups.forEach(function (sg) {
+            var sgColor = subGroupLegendData.find(function (legData) { return legData.color === sg.color; });
+            if (!sgColor) {
+                subGroupLegendData.push({color: sg.color, name: sg.name});
+            }
+        });
+    });
+
+
+    // Draw legend
+    var legend = chart.selectAll(".legend")
+        .data(subGroupLegendData)
+        .enter();
+
+    legend.append("rect")
+        .attr("x", width - 10 )
+        .attr("y", function(d) {
+            var sgColor = subGroupLegendData.find(function (legData) { return legData.color === d.color; });
+            return 18 * subGroupLegendData.indexOf(sgColor);
+        })
+        .attr("height", 14)
+        .attr("fill", function (d) { return d.color})
+        .attr("width", 14);
+
+    legend.append("rect")
+        .attr("x", width - 10 )
+        .attr("y", function(d) {
+            var sgColor = subGroupLegendData.find(function (legData) { return legData.color === d.color; });
+            return 18 * subGroupLegendData.indexOf(sgColor);
+        })
+        .attr("height", 14)
+        .attr("fill", function (d) { return d.color})
+        .attr("width", 14);
+
+    legend.append("text")
+        .attr("x", width - 20)
+        .attr("y", function(d) {
+            var sgColor = subGroupLegendData.find(function (legData) { return legData.color === d.color; });
+            return 18 * subGroupLegendData.indexOf(sgColor);
+        })
+        .attr("dy", "1em")
+        .text(function(d) { return d.name; });
+}
+</script>
 </body>
-
 </html>
